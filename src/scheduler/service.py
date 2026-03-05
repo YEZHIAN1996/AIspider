@@ -42,11 +42,7 @@ class TaskService:
         spider_args: list[str],
     ) -> SpiderTask:
         validate_schedule(schedule_type, schedule_expr)
-        urls = extract_seed_urls(spider_args)
-        if not urls:
-            raise TaskValidationError(
-                "spider_args must include at least one valid http/https URL"
-            )
+        # 允许 spider_args 为空（支持自带 start_requests 的爬虫）
         task = SpiderTask(
             task_id=f"task_{uuid.uuid4().hex[:8]}",
             spider_name=spider_name,

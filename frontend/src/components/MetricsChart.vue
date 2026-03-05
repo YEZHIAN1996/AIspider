@@ -1,12 +1,10 @@
 <template>
-  <div class="metrics-chart">
-    <canvas ref="chartCanvas"></canvas>
-  </div>
+  <div ref="chartRef" class="metrics-chart" style="height: 300px"></div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import Chart from 'chart.js/auto'
+import * as echarts from 'echarts'
 
 const props = defineProps<{
   metrics: Array<{
@@ -17,21 +15,16 @@ const props = defineProps<{
   }>
 }>()
 
-const chartCanvas = ref<HTMLCanvasElement>()
+const chartRef = ref<HTMLDivElement>()
 
 onMounted(() => {
-  if (!chartCanvas.value) return
+  if (!chartRef.value) return
 
-  new Chart(chartCanvas.value, {
-    type: 'bar',
-    data: {
-      labels: props.metrics.map(m => m.task_id),
-      datasets: [{
-        label: '成功率 (%)',
-        data: props.metrics.map(m => m.success_rate * 100),
-        backgroundColor: 'rgba(75, 192, 192, 0.6)'
-      }]
-    }
+  const chart = echarts.init(chartRef.value)
+  chart.setOption({
+    xAxis: { type: 'category', data: props.metrics.map(m => m.task_id) },
+    yAxis: { type: 'value', name: '成功率 (%)' },
+    series: [{ data: props.metrics.map(m => m.success_rate * 100), type: 'bar' }]
   })
 })
 </script>

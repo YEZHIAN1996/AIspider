@@ -60,7 +60,7 @@ class PandasProxyRefiller:
 
     async def refill(self, client: httpx.AsyncClient):
         """补充代理"""
-        current = await self.redis.zcard(self.redis_key)
+        current = await self.redis.scard(self.redis_key)
         if current >= self.pool_size:
             return
 
@@ -71,29 +71,22 @@ class PandasProxyRefiller:
             for item in batch:
                 ip = item.get("ip")
                 port = item.get("port")
-                valid_time = item.get("validTime")
-                if not ip or not port or not valid_time:
+                if not ip or not port:
                     continue
                 proxy = f"{ip}:{port}"
-                dt = datetime.strptime(
-                    valid_time, "%Y-%m-%d %H:%M:%S",
-                ).replace(tzinfo=self._tz_shanghai)
-                expire_ts = int(dt.timestamp()) - 10
-                await self.redis.zadd(self.redis_key, {proxy: expire_ts})
+                await self.redis.sadd(self.redis_key, proxy)
                 added += 1
             if added:
                 logger.info(
                     "补充 {} 个代理到池中，当前总数: {}",
-                    added, await self.redis.zcard(self.redis_key),
+                    added, await self.redis.scard(self.redis_key),
                 )
         except Exception as e:
             logger.error("补充代理失败: {}", e)
 
     async def clean_expired(self):
-        """清理过期代理"""
-        removed = await self.redis.zremrangebyscore(self.redis_key, 0, int(time.time()))
-        if removed:
-            logger.info("清理 {} 个过期代理", removed)
+        """清理过期代理（简化版，不再使用 sorted set）"""
+        pass
 
     async def run(self):
         """运行补充循环"""

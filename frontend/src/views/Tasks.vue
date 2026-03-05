@@ -27,8 +27,8 @@
         <n-form-item label="调度表达式">
           <n-input v-model:value="createForm.schedule_expr" placeholder="*/30 * * * * 或 3600" />
         </n-form-item>
-        <n-form-item label="Spider 参数 (URL)">
-          <n-input v-model:value="createForm.spider_args" placeholder="https://example.com" />
+        <n-form-item label="Spider 参数 (URL)" help="可选，某些爬虫自带初始请求">
+          <n-input v-model:value="createForm.spider_args" placeholder="https://example.com (可选)" />
         </n-form-item>
       </n-form>
     </n-modal>
@@ -99,17 +99,18 @@ const columns: DataTableColumns<Task> = [
 ]
 
 async function handleCreate() {
-  if (!createForm.spider_name || !createForm.schedule_expr || !createForm.spider_args) {
-    message.warning('请填写所有必填字段')
-    return false
+  if (!createForm.spider_name || !createForm.schedule_expr) {
+    message.warning('请填写 Spider 名称和调度表达式')
+    return
   }
   try {
     await tasksStore.createTask(createForm)
     message.success('任务创建成功')
     showCreate.value = false
     Object.assign(createForm, { spider_name: '', schedule_type: 'cron', schedule_expr: '', spider_args: '' })
-  } catch {
+  } catch (error) {
     message.error('创建失败')
+    throw error
   }
 }
 

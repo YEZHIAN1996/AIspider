@@ -109,13 +109,19 @@ async function fetchQueues() {
 }
 
 async function handleAdd() {
+  if (!addForm.url || !addForm.spider_name) {
+    message.warning('请填写 URL 和 Spider 名称')
+    return
+  }
   try {
-    await seedsApi.importSeeds(addForm)
+    await seedsApi.importSeeds([addForm])
     message.success('种子添加成功')
     showAdd.value = false
+    Object.assign(addForm, { url: '', spider_name: '', priority: 5 })
     await fetchQueues()
-  } catch {
+  } catch (error) {
     message.error('添加失败')
+    throw error
   }
 }
 
