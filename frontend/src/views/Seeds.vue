@@ -114,7 +114,11 @@ async function handleAdd() {
     return
   }
   try {
-    await seedsApi.importSeeds([addForm])
+    await seedsApi.importSeeds({
+      url: addForm.url,
+      spider_name: addForm.spider_name,
+      priority: addForm.priority
+    })
     message.success('种子添加成功')
     showAdd.value = false
     Object.assign(addForm, { url: '', spider_name: '', priority: 5 })
