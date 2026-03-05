@@ -1,0 +1,43 @@
+# 告警规则配置示例
+
+rules:
+  # 关键词匹配
+  - name: error_alert
+    match_type: keyword
+    pattern: ["ERROR", "Exception", "Traceback"]
+    level: critical
+    enabled: true
+
+  - name: oom_alert
+    match_type: keyword
+    pattern: "OOM"
+    level: critical
+    enabled: true
+
+  # 正则匹配
+  - name: timeout_alert
+    match_type: regex
+    pattern: "timeout.*\\d+s"
+    level: warning
+    enabled: true
+
+  # 日志级别匹配
+  - name: critical_level
+    match_type: level
+    pattern: ["CRITICAL", "FATAL"]
+    level: critical
+    enabled: true
+
+  # 字段匹配
+  - name: spider_failed
+    match_type: field
+    pattern: "status=failed"
+    level: warning
+    enabled: true
+
+  # 可以禁用某些规则
+  - name: debug_info
+    match_type: keyword
+    pattern: "DEBUG"
+    level: info
+    enabled: false
