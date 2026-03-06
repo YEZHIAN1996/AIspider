@@ -77,3 +77,27 @@ class DeadLetterQueue:
         count = await self._redis.llen(self._key)
         DEAD_LETTER_SIZE.set(count)
         return count
+
+    async def push_batch(self, items: list[dict], error: str = "") -> None:
+        """批量推入死信队列"""
+        if not items:
+            return
+
+        envelopes = [
+            json.dumps({
+                "data": item,
+                "error": error,
+                "target": self._target,
+                "failed_at": time.time(),
+                "retry_count": 0,
+            }, ensure_ascii=False)
+            for item in items
+        ]
+
+        await self._redis.rpush(self._key, *envelopes)
+        size = await self._redis.llen(self._key)
+        DEAD_LETTER_SIZE.set(size)
+        logger.warning(
+            "批量写入死信队列: target=%s, count=%d",
+            self._target, len(items),
+        )

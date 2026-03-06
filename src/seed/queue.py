@@ -45,6 +45,8 @@ class SeedQueue:
 
         使用 ZPOPMAX 保证原子性。
         """
+        if count <= 0:
+            return []
         results = await self._redis.zpopmax(self._key, count)
         seeds = [member for member, _score in results]
         if seeds:

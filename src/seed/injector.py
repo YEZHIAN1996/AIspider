@@ -90,7 +90,7 @@ class SeedInjector:
         seeds: list[SeedMeta],
         batch_size: int = 500,
     ) -> dict[str, int]:
-        """批量注入种子
+        """批量注入种子（使用 pipeline 优化性能）
 
         Args:
             seeds: 种子列表
@@ -101,14 +101,30 @@ class SeedInjector:
         """
         added = 0
         duplicated = 0
+        sha = await self._dedup._load_script()
 
         for i in range(0, len(seeds), batch_size):
             batch = seeds[i : i + batch_size]
-            for seed in batch:
-                if await self.inject(seed):
+
+            async with self._redis.pipeline(transaction=False) as pipe:
+                for seed in batch:
+                    seed_json = json.dumps(asdict(seed), ensure_ascii=False)
+                    fp = self._dedup.fingerprint(seed.url)
+                    pipe.evalsha(
+                        sha, 2,
+                        self._dedup._bloom_key, self._queue.key,
+                        fp, seed.priority, seed_json, seed.ttl,
+                    )
+                results = await pipe.execute()
+
+            for result in results:
+                if result:
                     added += 1
                 else:
                     duplicated += 1
+
+        SEED_ENQUEUED_TOTAL.labels(spider_name=self._spider_name).inc(added)
+        SEED_DUPLICATED_TOTAL.labels(spider_name=self._spider_name).inc(duplicated)
 
         logger.info(
             "批量注入完成: spider=%s, added=%d, duplicated=%d",

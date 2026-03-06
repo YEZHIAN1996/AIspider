@@ -10,6 +10,8 @@ import asyncio
 import logging
 import os
 
+from src.config import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,18 +24,20 @@ class LogFileWatchdog:
     Args:
         log_dir: 日志目录
         notifiers: 通知渠道列表
-        poll_interval: 轮询间隔（秒）
+        poll_interval: 轮询间隔（秒），默认从配置读取
     """
 
     def __init__(
         self,
         log_dir: str,
         notifiers: list,
-        poll_interval: float = 10.0,
+        poll_interval: float | None = None,
     ) -> None:
         self._log_dir = log_dir
         self._notifiers = notifiers
-        self._poll_interval = poll_interval
+        settings = get_settings()
+        self._poll_interval = poll_interval or settings.watchdog_poll_interval
+        self._read_chunk_size = settings.watchdog_read_chunk_size
         self._offsets: dict[str, int] = {}
         self._running = False
 
@@ -65,10 +69,8 @@ class LogFileWatchdog:
                 self._offsets[fpath] = size
                 continue
 
-            # 读取新增内容
-            with open(fpath, encoding="utf-8", errors="replace") as f:
-                f.seek(prev)
-                new_lines = f.read(4096)
+            # 读取新增内容（使用线程池避免阻塞）
+            new_lines = await asyncio.to_thread(self._read_file, fpath, prev)
             self._offsets[fpath] = size
 
             if new_lines.strip():
@@ -79,3 +81,9 @@ class LogFileWatchdog:
                         )
                     except Exception:
                         logger.exception("Watchdog 告警发送失败")
+
+    def _read_file(self, fpath: str, offset: int) -> str:
+        """同步读取文件（在线程池中执行）"""
+        with open(fpath, encoding="utf-8", errors="replace") as f:
+            f.seek(offset)
+            return f.read(self._read_chunk_size)

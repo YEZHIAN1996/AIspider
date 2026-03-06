@@ -2,7 +2,7 @@
 
 统一管理 Redis / PostgreSQL / Kafka / MinIO 的连接池，
 应用启动时调用 startup()，关闭时调用 shutdown()。
-Kafka 连接支持重试，适应容器编排中的启动顺序不确定性。
+支持连接健康检查和自动重连。
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ class ConnectionManager:
         self._kafka_producer: AIOKafkaProducer | None = None
         self._minio: Minio | None = None
         self._started = False
+        self._health_check_task: asyncio.Task | None = None
 
     # ---- 生命周期 ----
 
@@ -68,21 +69,24 @@ class ConnectionManager:
             self._kafka_producer = AIOKafkaProducer(
                 bootstrap_servers=self._settings.kafka_brokers,
             )
-            for attempt in range(1, 11):
+            max_retries = self._settings.connection_kafka_retry_max
+            delay_base = self._settings.connection_kafka_retry_delay_base
+            for attempt in range(1, max_retries + 1):
                 try:
                     await self._kafka_producer.start()
                     break
                 except Exception as e:
-                    if attempt == 10:
+                    if attempt == max_retries:
                         await self._cleanup_partial()
                         raise
                     logger.warning(
-                        "Kafka 连接失败，%d秒后重试 (%d/10): %s",
-                        attempt * 3, attempt, e,
+                        "Kafka 连接失败，%d秒后重试 (%d/%d): %s",
+                        attempt * delay_base, attempt, max_retries, e,
                     )
-                    await asyncio.sleep(attempt * 3)
+                    await asyncio.sleep(attempt * delay_base)
 
             self._started = True
+            self._health_check_task = asyncio.create_task(self._health_check_loop())
             logger.info("ConnectionManager: 所有连接已就绪")
         except Exception:
             await self._cleanup_partial()
@@ -119,6 +123,13 @@ class ConnectionManager:
             return
 
         logger.info("ConnectionManager: 正在关闭连接...")
+
+        if self._health_check_task:
+            self._health_check_task.cancel()
+            try:
+                await self._health_check_task
+            except asyncio.CancelledError:
+                pass
 
         if self._kafka_producer:
             await self._kafka_producer.stop()
@@ -161,3 +172,44 @@ class ConnectionManager:
     @property
     def is_started(self) -> bool:
         return self._started
+
+    # ---- 健康检查 ----
+
+    async def _health_check_loop(self) -> None:
+        """定期健康检查，连接失败时自动重连"""
+        interval = self._settings.connection_health_check_interval
+        while self._started:
+            await asyncio.sleep(interval)
+            try:
+                await self._check_health()
+            except Exception:
+                logger.exception("健康检查失败")
+
+    async def _check_health(self) -> None:
+        """检查所有连接健康状态"""
+        # Redis
+        try:
+            await self._redis.ping()
+        except Exception as e:
+            logger.error("Redis 连接失败，尝试重连: %s", e)
+            await self._reconnect_redis()
+
+        # PostgreSQL
+        try:
+            async with self._pg_pool.connection() as conn:
+                await conn.execute("SELECT 1")
+        except Exception as e:
+            logger.error("PostgreSQL 连接失败: %s", e)
+
+    async def _reconnect_redis(self) -> None:
+        """重连 Redis"""
+        try:
+            await self._redis.close()
+            self._redis = Redis.from_url(
+                self._settings.redis_url,
+                decode_responses=True,
+            )
+            await self._redis.ping()
+            logger.info("Redis 重连成功")
+        except Exception:
+            logger.exception("Redis 重连失败")

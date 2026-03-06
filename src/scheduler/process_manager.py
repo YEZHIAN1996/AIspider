@@ -105,9 +105,15 @@ class ProcessManager:
         for sid in ids:
             await self.stop_spider(sid)
 
-    async def _watch_process(self, sp: SpiderProcess) -> None:
+    async def _watch_process(self, sp: SpiderProcess, timeout: float = 3600) -> None:
         """监控子进程退出，异常退出时自动重启"""
-        returncode = await sp.process.wait()
+        try:
+            returncode = await asyncio.wait_for(sp.process.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            logger.error("Spider 进程超时未退出，强制终止: id=%s", sp.spider_id)
+            sp.process.kill()
+            returncode = -1
+
         SCHEDULER_TASKS_RUNNING.set(self.running_count)
 
         if returncode != 0 and sp.status != "stopping":

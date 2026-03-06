@@ -11,6 +11,7 @@ import time
 import uuid
 
 from src.config import get_settings
+from src.infra.utils import safe_json_decode
 from src.scheduler.tasks import (
     SpiderTask,
     TaskStore,
@@ -107,25 +108,11 @@ class TaskService:
         raw = await self._redis.get(
             COMMAND_STATUS_KEY.format(command_id=command_id)
         )
-        if not raw:
-            return {"command_id": command_id, "status": "unknown"}
-        if isinstance(raw, bytes):
-            raw = raw.decode()
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            return {"command_id": command_id, "status": "invalid"}
+        return safe_json_decode(raw, {"command_id": command_id, "status": "unknown"})
 
     async def get_runtime_status(self) -> dict:
         raw = await self._redis.get(RUNTIME_STATUS_KEY)
-        if not raw:
-            return {"updated_at": 0.0, "processes": []}
-        if isinstance(raw, bytes):
-            raw = raw.decode()
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            return {"updated_at": 0.0, "processes": []}
+        return safe_json_decode(raw, {"updated_at": 0.0, "processes": []})
 
     async def _push_command(self, command: str, task_id: str) -> str:
         settings = get_settings()

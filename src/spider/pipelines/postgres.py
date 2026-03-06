@@ -35,15 +35,19 @@ class PostgresWriterPipeline:
             if conn and conn.is_started and self._columns:
                 from src.writer.pg_writer import PgWriter
                 from src.writer.buffer import WriteBuffer
+                from src.writer.dead_letter import DeadLetterQueue
                 from src.quality.quarantine import QuarantineStore
+
                 self._pg_writer = PgWriter(
                     conn.pg, self._table, self._columns,
                 )
+                dlq = DeadLetterQueue(conn.redis, target="postgres")
                 self._buffer = WriteBuffer(
                     name=f"pg:{self._table}",
                     flush_callback=self._pg_writer.write_batch,
                     max_size=200,
                     flush_interval=3.0,
+                    dead_letter_callback=dlq.push_batch,
                 )
                 self._quarantine = QuarantineStore(conn.pg)
             elif not self._columns and not self._warned_no_columns:

@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import TYPE_CHECKING
 
@@ -23,9 +24,22 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# SQL 标识符白名单正则（仅允许字母、数字、下划线）
+_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+
+def validate_identifier(name: str) -> None:
+    """验证 SQL 标识符（表名、列名）安全性"""
+    if not _IDENTIFIER_PATTERN.match(name):
+        raise ValueError(f"Invalid SQL identifier: {name}")
+
 
 def build_batch_insert(table: str, columns: list[str]) -> SQL:
     """构建安全的批量插入 SQL（参数化查询防止注入）"""
+    validate_identifier(table)
+    for col in columns:
+        validate_identifier(col)
+
     return SQL(
         "INSERT INTO {} ({}) VALUES ({}) ON CONFLICT DO NOTHING"
     ).format(

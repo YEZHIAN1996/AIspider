@@ -16,7 +16,6 @@ from scrapy_redis.spiders import RedisSpider
 from twisted.internet import defer
 
 from src.config import get_settings
-from src.infra.connections import ConnectionManager
 
 
 class BaseSpider(RedisSpider):
@@ -48,29 +47,28 @@ class BaseSpider(RedisSpider):
         )
         settings = get_settings()
         settings.validate_runtime_safety(service=f"spider-worker:{self.name}")
-        # 连接管理器，供 Pipeline 通过 spider._conn_manager 访问
-        self._conn_manager = ConnectionManager(settings)
-        self._conn_started = False
 
-    @defer.inlineCallbacks
+    @property
+    def _conn_manager(self):
+        """从 extension 获取共享连接管理器"""
+        ext = self.crawler.extensions.get("SharedConnectionExtension")
+        if ext is None:
+            raise RuntimeError("SharedConnectionExtension 未启用")
+        return ext.conn_manager
+
     def spider_opened(self):
-        """Spider 打开时初始化连接"""
-        if not self._conn_started:
-            yield defer.ensureDeferred(self._conn_manager.startup())
-            self._conn_started = True
-            self.log("ConnectionManager 已初始化")
+        """Spider 打开时的钩子"""
+        self.log("Spider 已启动")
 
-    @defer.inlineCallbacks
     def spider_closed(self, reason):
-        """Spider 关闭时清理连接"""
-        if self._conn_started:
-            yield defer.ensureDeferred(self._conn_manager.shutdown())
-            self._conn_started = False
-            self.log(f"ConnectionManager 已关闭, reason={reason}")
+        """Spider 关闭时的钩子"""
+        self.log(f"Spider 已关闭, reason={reason}")
 
     def log(self, message: str, level: str = "INFO", **extra):
         """结构化日志，自动携带 spider 上下文"""
-        self._logger.bind(**extra).log(level, message)
+        from src.logger.filters import filter_sensitive_data
+        filtered_extra = filter_sensitive_data(extra)
+        self._logger.bind(**filtered_extra).log(level, message)
 
     def make_request(self, url, callback, **kwargs):
         """统一构造 Request，自动注入 trace_id"""
