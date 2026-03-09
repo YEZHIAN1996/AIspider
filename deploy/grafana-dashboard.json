@@ -1,0 +1,57 @@
+{
+  "dashboard": {
+    "title": "AIspider 监控仪表盘",
+    "tags": ["aispider", "crawler"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "爬虫任务运行数",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "scheduler_tasks_running",
+            "legendFormat": "运行中任务"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "种子队列长度",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "seed_queue_size",
+            "legendFormat": "{{spider_name}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "写入成功率",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(write_success_total[5m])",
+            "legendFormat": "{{target}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "死信队列积压",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "dead_letter_size",
+            "legendFormat": "死信队列"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      }
+    ]
+  }
+}

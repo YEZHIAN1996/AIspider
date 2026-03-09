@@ -6,6 +6,7 @@
 
 from functools import lru_cache
 import logging
+from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -45,8 +46,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = Field(default=1440, ge=5, le=43200)
     auth_bcrypt_rounds: int = Field(default=12, ge=4, le=31)
-    bootstrap_admin_username: str | None = None
-    bootstrap_admin_password: str | None = None
+    bootstrap_admin_username: Optional[str] = None
+    bootstrap_admin_password: Optional[str] = None
 
     # ---- 日志 ----
     log_dir: str = "/var/log/aispider"
