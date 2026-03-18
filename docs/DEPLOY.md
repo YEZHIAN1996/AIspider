@@ -274,3 +274,88 @@ pip install -r requirements.txt
 # 4. 重启服务
 docker-compose restart
 ```
+
+---
+
+## 监控配置
+
+### Grafana 监控面板
+
+AIspider 已预配置 Grafana + Prometheus 监控系统。
+
+**访问地址**:
+- Grafana: http://localhost:3000
+- Prometheus: http://localhost:9090
+
+**默认账号**:
+- 用户名: `admin`
+- 密码: `admin` (首次登录需修改)
+
+**监控指标**:
+1. **爬虫任务运行数** - 实时监控运行中的任务数量
+2. **种子队列长度** - 各spider的待爬取URL数量
+3. **写入成功率** - 数据写入PostgreSQL/Kafka/MinIO的成功率
+4. **死信队列积压** - 失败重试队列的积压情况
+
+**自定义监控**:
+编辑 `deploy/grafana-dashboard.json` 添加新的监控面板。
+
+---
+
+## 告警配置
+
+### 配置告警规则
+
+复制示例配置:
+```bash
+cp alert_rules.example.yaml alert_rules.yaml
+vim alert_rules.yaml
+```
+
+### 支持的告警渠道
+
+#### 1. 钉钉告警
+```yaml
+# .env
+AISPIDER_DINGTALK_WEBHOOK_URL=https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN
+```
+
+#### 2. 企业微信告警
+```yaml
+# .env
+AISPIDER_WECHAT_WEBHOOK_KEY=YOUR_WEBHOOK_KEY
+```
+
+#### 3. 飞书告警
+```yaml
+# .env
+AISPIDER_FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/YOUR_TOKEN
+```
+
+### 告警规则示例
+
+```yaml
+rules:
+  - name: "死信队列积压"
+    metric: "dead_letter_size"
+    threshold: 1000
+    operator: ">"
+    channels: ["dingtalk", "wechat"]
+    
+  - name: "任务失败率过高"
+    metric: "task_failure_rate"
+    threshold: 0.1
+    operator: ">"
+    channels: ["dingtalk"]
+```
+
+### 启动告警监控
+
+```bash
+# Docker 部署
+docker compose up -d monitor
+
+# 手动部署
+python -m src.monitor.alert_consumer
+```
+
