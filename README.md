@@ -1,6 +1,6 @@
 # AIspider - 企业级分布式爬虫框架
 
-[![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Code Quality](https://img.shields.io/badge/quality-A+-brightgreen.svg)](https://github.com/YEZHIAN1996/AIspider)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 

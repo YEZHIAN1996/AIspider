@@ -10,7 +10,7 @@ import json
 import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-import jwt
+from jose import jwt
 
 from src.config import get_settings
 from src.api.deps import get_conn, get_task_service

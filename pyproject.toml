@@ -29,12 +29,13 @@ dependencies = [
     "scrapy>=2.11",
     "scrapy-redis>=0.7",
     # 调度
-    "apscheduler>=4.0.0a1",
+    "apscheduler>=4.0.0a5",
     # API
     "fastapi>=0.110",
     "uvicorn[standard]>=0.27",
-    "pyjwt>=2.8",
-    "bcrypt>=4.1",
+    "python-jose[cryptography]>=3.3",
+    "passlib[bcrypt]>=1.7",
+    "python-multipart>=0.0.9",
     # 数据库迁移
     "alembic>=1.13",
     "sqlalchemy>=2.0",

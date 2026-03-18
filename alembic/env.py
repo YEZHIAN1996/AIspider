@@ -1,5 +1,6 @@
 """Alembic env.py — 迁移运行环境配置"""
 
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -8,6 +9,10 @@ from sqlalchemy import engine_from_config, pool, text
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# 支持环境变量覆盖数据库URL
+if os.getenv("AISPIDER_PG_DSN"):
+    config.set_main_option("sqlalchemy.url", os.getenv("AISPIDER_PG_DSN"))
 
 target_metadata = None
 

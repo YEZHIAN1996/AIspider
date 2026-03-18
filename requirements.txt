@@ -19,7 +19,7 @@ aiokafka==0.10.0
 miniopy-async==1.19
 
 # Scheduler
-apscheduler==3.10.4
+apscheduler==4.0.0a5
 
 # Authentication
 python-jose[cryptography]==3.3.0

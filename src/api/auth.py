@@ -7,7 +7,7 @@ from collections.abc import Callable
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-import jwt
+from jose import jwt
 
 from src.config import get_settings
 
